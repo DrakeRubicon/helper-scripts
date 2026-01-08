@@ -1,5 +1,10 @@
 /*
-    Save Illustrator file with name based on:
+    Finishes a prepared Film job file by:
+    - Renaming artboards to include size and object count
+    - Saving the file with a name based on date, artboard count, and per-artboard size + object count
+    - Exporting each artboard as a high-res grayscale TIFF
+
+    Illustrator file with name based on:
     Date, artboard count, and per-artboard size + object count
 
     Example:
@@ -85,6 +90,32 @@
         return info;
     }
 
+    // ---------- EXPORT ARTBOARDS AS TIFF ----------
+    function exportArtboardsAsTIFF(doc, folder, baseName) {
+
+        var tiffOptions = new ExportOptionsTIFF();
+        tiffOptions.imageColorSpace = ImageColorSpace.GRAY;
+        tiffOptions.resolution = 450;
+        tiffOptions.antiAliasing = AntiAliasingMethod.TYPEOPTIMIZED;
+        tiffOptions.byteOrder = TIFFByteOrder.IBMPC;
+        tiffOptions.lZWCompression = true;
+        tiffOptions.embedICCProfile = true;
+
+        for (var i = 0; i < doc.artboards.length; i++) {
+            doc.artboards.setActiveArtboardIndex(i);
+
+            var abName = doc.artboards[i].name.replace(/[\\\/:*?"<>|]/g, "_");
+
+            var tiffFile = new File(
+                folder.fsName + "/" +
+                baseName + "_" + abName + ".tif"
+            );
+
+            doc.exportFile(tiffFile, ExportType.TIFF, tiffOptions);
+        }
+    }
+
+
     // ---------- COLLECT ARTBOARD INFO ----------
     var abInfo = collectArtboardInfo(doc, ptToMm);
     var abCount = abInfo.length;
@@ -113,7 +144,7 @@
     }
 
     var newFileName =
-            dateStr + "_" + abCount + " " + filmWord + "_[" + abData.join(",") + "].ai";
+        dateStr + "_" + abCount + " " + filmWord + "_[" + abData.join(",") + "].ai";
 
     // ---------- SAVE LOCATION ----------
     var folder;
@@ -133,5 +164,11 @@
 
     doc.saveAs(saveFile, saveOptions);
 
-    alert("File saved as:\n" + saveFile.fsName);
+    // ---------- EXPORT TIFFs ----------
+
+    var baseName = dateStr + "_";
+    exportArtboardsAsTIFF(doc, folder, baseName);
+
+    alert("File saved and TIFFs exported:\n" + folder.fsName);
+
 })();
