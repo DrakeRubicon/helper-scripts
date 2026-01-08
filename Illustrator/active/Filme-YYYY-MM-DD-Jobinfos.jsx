@@ -8,7 +8,15 @@
     Date, artboard count, and per-artboard size + object count
 
     Example:
-    2026-01-07_3 Filme_[{500x700mm,12},{300x300mm,4},{210x297mm,9}].ai
+    2026-01-07_3 Filme_[{500x700mm, 12 Spuren},{300x300mm, 1 Spur},{210x297mm, 9 Spuren}].ai
+    2023-11-15_1 Film_[400x600mm,8].ai
+
+    Each artboard renamed to:
+    "Film X, WIDTHxHEIGHTmm, N Spuren"
+
+    Example:
+    "Film 1, 500x700mm, 12 Spuren"
+    "Film 2, 300x300mm, 1 Spur"
 */
 
 (function () {
