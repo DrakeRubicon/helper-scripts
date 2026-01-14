@@ -9,9 +9,9 @@
 
     var src = app.activeDocument;
 
-    // ---------- FIND LAYERS ----------
-    var layersToCopy = [];
+    // ---------- FIND SOURCE LAYERS ----------
     var fcLayer = null;
+    var plottLayers = [];
 
     for (var i = 0; i < src.layers.length; i++) {
         var lname = src.layers[i].name;
@@ -19,55 +19,91 @@
         if (!fcLayer && lname.indexOf("FC ") === 0) {
             fcLayer = src.layers[i];
         }
-
         if (/^plott/i.test(lname)) {
-            layersToCopy.push(src.layers[i]);
+            plottLayers.push(src.layers[i]);
         }
     }
 
-    if (fcLayer) layersToCopy.push(fcLayer);
-
-    if (!layersToCopy.length) {
-        alert("No valid layers found.");
+    if (!fcLayer || !plottLayers.length) {
+        alert("Required layers not found.");
         return;
     }
 
-    // ---------- CREATE NEW DOCUMENT ----------
-    var newDoc = app.documents.add(
-        src.documentColorSpace,
-        src.width,
-        src.height
-    );
+    // ---------- SCAN FOR DIE / KISS GROUPS ----------
+    var dieGroups = [];
+    var kissGroups = [];
 
-    newDoc.rulerOrigin = src.rulerOrigin;
-    newDoc.pageOrigin = src.pageOrigin;
+    function scanGroups(container) {
+        for (var i = 0; i < container.groupItems.length; i++) {
+            var g = container.groupItems[i];
+            var name = g.name.toLowerCase();
+
+            if (name === "diecut" || name === "die") dieGroups.push(g);
+            if (name === "kisscut" || name === "kiss") kissGroups.push(g);
+
+            scanGroups(g);
+        }
+    }
+
+    for (var p = 0; p < plottLayers.length; p++) {
+        scanGroups(plottLayers[p]);
+    }
+
+    var hasSpecialGroups = dieGroups.length || kissGroups.length;
+
+    // ---------- CREATE NEW DOCUMENT ----------
+    var newDoc = app.documents.add(src.documentColorSpace, src.width, src.height);
     newDoc.artboards[0].artboardRect = src.artboards[0].artboardRect;
 
-    // ---------- COPY LAYERS ----------
-    for (var j = 0; j < layersToCopy.length; j++) {
-        var layer = layersToCopy[j];
-
-        layer.hasSelectedArtwork = true;
-        src.selection = null;
-        layer.hasSelectedArtwork = true;
-
+    function copyItem(item, targetLayer) {
+        item.selected = true;
         app.copy();
-
         app.activeDocument = newDoc;
-
-        var newLayer = newDoc.layers.add();
-        newLayer.name = layer.name;
         app.paste();
-
+        newDoc.activeLayer.move(targetLayer, ElementPlacement.PLACEATEND);
         app.activeDocument = src;
         src.selection = null;
     }
 
-    // ---------- SAVE CS6 FILE ----------
+    // ---------- FC LAYER ----------
+    var fcTarget = newDoc.layers.add();
+    fcTarget.name = fcLayer.name;
+    copyItem(fcLayer, fcTarget);
+
+    // ---------- DIE / KISS MODE ----------
+    if (hasSpecialGroups) {
+
+        if (dieGroups.length) {
+            var dieLayer = newDoc.layers.add();
+            dieLayer.name = "DIECUT";
+            for (var d = 0; d < dieGroups.length; d++) {
+                copyItem(dieGroups[d], dieLayer);
+            }
+        }
+
+        if (kissGroups.length) {
+            var kissLayer = newDoc.layers.add();
+            kissLayer.name = "KISSCUT";
+            for (var k = 0; k < kissGroups.length; k++) {
+                copyItem(kissGroups[k], kissLayer);
+            }
+        }
+
+    } 
+    // ---------- NORMAL PLOTT MODE ----------
+    else {
+        for (var l = 0; l < plottLayers.length; l++) {
+            var pl = newDoc.layers.add();
+            pl.name = plottLayers[l].name;
+            copyItem(plottLayers[l], pl);
+        }
+    }
+
+    // ---------- SAVE ----------
     var saveFile = new File(src.path + "/PLOTT.ai");
 
     var opts = new IllustratorSaveOptions();
-    opts.compatibility = Compatibility.ILLUSTRATOR17; // CS6
+    opts.compatibility = Compatibility.ILLUSTRATOR17;
     opts.flattenOutput = OutputFlattening.PRESERVEAPPEARANCE;
     opts.pdfCompatible = false;
 
@@ -75,7 +111,6 @@
     newDoc.close(SaveOptions.DONOTSAVECHANGES);
 
     app.activeDocument = src;
-
     alert("PLOTT.ai exported successfully.");
 
 })();
