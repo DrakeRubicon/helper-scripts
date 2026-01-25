@@ -102,15 +102,20 @@
     function exportArtboardsAsTIFF(doc, folder, baseName) {
 
         var tiffOptions = new ExportOptionsTIFF();
-        tiffOptions.imageColorSpace = ImageColorSpace.GRAY;
+        tiffOptions.imageColorSpace = ImageColorSpace.GrayScale;
         tiffOptions.resolution = 450;
         tiffOptions.antiAliasing = AntiAliasingMethod.TYPEOPTIMIZED;
         tiffOptions.byteOrder = TIFFByteOrder.IBMPC;
         tiffOptions.lZWCompression = true;
         tiffOptions.embedICCProfile = true;
+        tiffOptions.saveMultipleArtboards = false;
 
         for (var i = 0; i < doc.artboards.length; i++) {
             doc.artboards.setActiveArtboardIndex(i);
+
+            //exportOptions.artboardRange = "1" i+1
+
+            //addWhiteBackgroundForArtboard(doc, i);
 
             var abName = doc.artboards[i].name.replace(/[\\\/:*?"<>|]/g, "_");
 
@@ -122,6 +127,29 @@
             doc.exportFile(tiffFile, ExportType.TIFF, tiffOptions);
         }
     }
+
+    // ---------- SET BACKGROUND TO WHITE RECT
+    function addWhiteBackgroundForArtboard(doc, artboardIndex) {
+    var ab = doc.artboards[artboardIndex];
+    var r = ab.artboardRect; // [left, top, right, bottom]
+
+    var bg = doc.pathItems.rectangle(
+        r[1],                 // top
+        r[0],                 // left
+        r[2] - r[0],          // width
+        r[1] - r[3]           // height
+    );
+
+    bg.filled = true;
+    bg.fillColor = new RGBColor();
+    bg.fillColor.red = 0;
+    bg.fillColor.green = 0;
+    bg.fillColor.blue = 0;
+
+    bg.stroked = false;
+    bg.move(doc, ElementPlacement.PLACEATEND);
+}
+
 
 
     // ---------- COLLECT ARTBOARD INFO ----------
